@@ -2,7 +2,7 @@ from langchain_core.messages import AIMessage
 from langchain_community.document_loaders import TextLoader
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_aws import BedrockEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from operator import itemgetter
@@ -17,9 +17,11 @@ def initialize_discussion_chain(txt_file, llm):
     loader = TextLoader(txt_file, encoding='UTF-8')
     docs = loader.load()
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.split_documents(docs)
-    vectorstore = Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
+    vectorstore = Chroma.from_documents(
+        documents=splits, embedding=BedrockEmbeddings())
 
     # Retrieve and generate using the relevant snippets of the blog.
     retriever = vectorstore.as_retriever()
@@ -139,7 +141,8 @@ def parse_script_plan(ai_message: AIMessage) -> list:
 
     # Regex patterns for any level of headers and bullet points
     header_pattern = re.compile(r"^#+\s")  # Match headers with any number of #
-    bullet_pattern = re.compile(r"^- ")  # Match lines starting with a bullet point "- "
+    # Match lines starting with a bullet point "- "
+    bullet_pattern = re.compile(r"^- ")
 
     # Parse each line, starting with the first header after the title
     for line in lines:

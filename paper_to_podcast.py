@@ -2,29 +2,27 @@ import argparse
 import os
 from templates import enhance_prompt, initial_dialogue_prompt, plan_prompt
 from dotenv import load_dotenv
+import boto3
 from langchain_core.output_parsers import StrOutputParser
-from openai import OpenAI
-from langchain_openai import ChatOpenAI
+from langchain_aws import ChatBedrock
 from utils.script import generate_script, parse_script_plan
 from utils.audio_gen import generate_podcast
 
 # Load environment variables from a .env file
 load_dotenv()
 
-# Retrieve the OpenAI API key from the environment variables
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Initialize the Bedrock client
+bedrock_client = boto3.client(service_name='bedrock-runtime')
 
-# Check if the keys were retrieved successfully
-if OPENAI_API_KEY:
-    print(f"API Key retrieved successfully")
-else:
-    print("API Key not found")
-
-# Initialize the OpenAI API client
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-# Initialize the ChatOpenAI model
-llm = ChatOpenAI(model="gpt-4o-mini")
+# Initialize the Bedrock model
+llm = ChatBedrock(
+    model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    client=bedrock_client,
+    model_kwargs={
+        "max_tokens": 2048,
+        "temperature": 0.7,
+    }
+)
 
 # chains
 chains = {
@@ -37,12 +35,13 @@ chains = {
 def main(pdf_path):
     # Step 1: Generate the podcast script from the PDF
     print("Generating podcast script...")
-    script = generate_script(pdf_path, chains,llm)
+    script = generate_script(pdf_path, chains, llm)
     print("Podcast script generation complete!")
 
     print("Generating podcast audio files...")
-    # Step 2: Generate the podcast audio files and merge them
-    generate_podcast(script, client)
+    # Note: You'll need to modify generate_podcast to use Amazon Polly or another TTS service
+    polly_client = boto3.client(service_name='polly')
+    generate_podcast(script, polly_client)
     print("Podcast generation complete!")
 
 
