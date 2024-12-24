@@ -16,7 +16,7 @@ bedrock_client = boto3.client(service_name='bedrock-runtime')
 
 # Initialize the Bedrock model
 llm = ChatBedrock(
-    model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    model_id=os.getenv("MODEL_ID"),
     client=bedrock_client,
     model_kwargs={
         "max_tokens": 2048,
