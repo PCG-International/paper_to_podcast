@@ -39,7 +39,6 @@ def main(pdf_path):
     print("Podcast script generation complete!")
 
     print("Generating podcast audio files...")
-    # Note: You'll need to modify generate_podcast to use Amazon Polly or another TTS service
     polly_client = boto3.client(service_name='polly')
     generate_podcast(script, polly_client)
     print("Podcast generation complete!")
