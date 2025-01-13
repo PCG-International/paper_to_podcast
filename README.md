@@ -40,7 +40,15 @@ This structure fosters an interactive listening experience, helping users better
    ```
 
 3. Ensure you have run `aws configure` and setup the access to an AWS account with the proper IAM permissions.
-4. Set your desired Bedrock model in the `.env` file.
+4. Set your desired AWS options in the `.env` file.
+
+*Example `.env` file:*
+
+```bash
+MODEL_ID="anthropic.claude-3-5-sonnet-20240620-v1:0"
+EMBEDDINGS_MODEL_ID="amazon.titan-embed-text-v2:0"
+AWS_REGION="us-east-1"
+```
 
 ### Running the App
 

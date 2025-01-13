@@ -3,14 +3,13 @@ import datetime
 import os
 import glob
 import re
-import boto3
 from contextlib import closing
 
 
 def generate_host(text: str, polly_client, output_dir: str):
     now = int(datetime.datetime.now().timestamp())
     response = polly_client.synthesize_speech(
-        Engine='neural',
+        Engine="generative",
         Text=text,
         OutputFormat='mp3',
         VoiceId='Matthew'
@@ -26,10 +25,10 @@ def generate_host(text: str, polly_client, output_dir: str):
 def generate_expert(text: str, polly_client, output_dir: str):
     now = int(datetime.datetime.now().timestamp())
     response = polly_client.synthesize_speech(
-        Engine='neural',
+        Engine="generative",
         Text=text,
         OutputFormat='mp3',
-        VoiceId='Stephen'
+        VoiceId='Ruth'
     )
 
     output_path = f"./{output_dir}/expert_{now}.mp3"
@@ -42,7 +41,7 @@ def generate_expert(text: str, polly_client, output_dir: str):
 def generate_learner(text: str, polly_client, output_dir: str):
     now = int(datetime.datetime.now().timestamp())
     response = polly_client.synthesize_speech(
-        Engine='neural',
+        Engine="generative",
         Text=text,
         OutputFormat='mp3',
         VoiceId='Joanna'

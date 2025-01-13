@@ -9,6 +9,7 @@ from operator import itemgetter
 from PyPDF2 import PdfReader
 from templates import discuss_prompt_template
 from datetime import datetime
+import os
 import re
 
 
@@ -18,10 +19,14 @@ def initialize_discussion_chain(txt_file, llm):
     docs = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, chunk_overlap=200)
+        chunk_size=2500, chunk_overlap=500)
     splits = text_splitter.split_documents(docs)
     vectorstore = Chroma.from_documents(
-        documents=splits, embedding=BedrockEmbeddings())
+        documents=splits, embedding=BedrockEmbeddings(
+            model_id=os.getenv("EMBEDDINGS_MODEL_ID"),
+            region_name=os.getenv("AWS_REGION")
+        )
+    )
 
     # Retrieve and generate using the relevant snippets of the blog.
     retriever = vectorstore.as_retriever()
@@ -97,33 +102,83 @@ def get_head(pdf_path: str) -> str:
     return "\n".join(extracted_text)
 
 
+# def generate_script(pdf_path: str, chains: dict, llm) -> str:
+#     start_time = datetime.now()
+#     # step 1: parse the pdf file
+#     txt_file = f"text_paper_{datetime.now().strftime('%Y%m%d%H%M%S')}.txt"
+#     txt_file = parse_pdf(pdf_path, txt_file)
+#     with open(txt_file, "r", encoding="utf-8") as file:
+#         paper = file.read()
+#     plan = chains["plan_script_chain"].invoke({"paper": paper})
+#     print("plan generated")
+
+#     # step 3: generate the actual script for the podcast by looping over the sections of the plan
+#     script = ""
+#     # generate the initial dialogue
+#     initial_dialogue = chains["initial_dialogue_chain"].invoke(
+#         {"paper_head": get_head(pdf_path)}
+#     )
+
+#     script += initial_dialogue
+#     actual_script = initial_dialogue
+#     discuss_rag_chain = initialize_discussion_chain(txt_file, llm)
+#     for section in plan:
+#         section_script = discuss_rag_chain.invoke(
+#             {"section_plan": section, "previous_dialogue": actual_script}
+#         )
+#         script += section_script
+#         actual_script = section_script
+#     enhanced_script = chains["enhance_chain"].invoke({"draft_script": script})
+#     end_time = datetime.now()
+#     print(f"Time taken: {end_time - start_time}")
+#     print("final script generated")
+#     return enhanced_script
+
+
 def generate_script(pdf_path: str, chains: dict, llm) -> str:
     start_time = datetime.now()
-    # step 1: parse the pdf file
     txt_file = f"text_paper_{datetime.now().strftime('%Y%m%d%H%M%S')}.txt"
     txt_file = parse_pdf(pdf_path, txt_file)
+
     with open(txt_file, "r", encoding="utf-8") as file:
         paper = file.read()
     plan = chains["plan_script_chain"].invoke({"paper": paper})
     print("plan generated")
 
-    # step 3: generate the actual script for the podcast by looping over the sections of the plan
     script = ""
-    # generate the initial dialogue
     initial_dialogue = chains["initial_dialogue_chain"].invoke(
         {"paper_head": get_head(pdf_path)}
     )
-
     script += initial_dialogue
     actual_script = initial_dialogue
+
     discuss_rag_chain = initialize_discussion_chain(txt_file, llm)
-    for section in plan:
-        section_script = discuss_rag_chain.invoke(
-            {"section_plan": section, "previous_dialogue": actual_script}
-        )
-        script += section_script
-        actual_script = section_script
-    enhanced_script = chains["enhance_chain"].invoke({"draft_script": script})
+
+    # Process sections in batches
+    batch_size = 3
+    for i in range(0, len(plan), batch_size):
+        batch = plan[i:i+batch_size]
+        batch_script = ""
+        for section in batch:
+            section_script = discuss_rag_chain.invoke({
+                "section_plan": section,
+                # Reduced context window
+                "previous_dialogue": actual_script[-2000:]
+            })
+            batch_script += section_script
+            actual_script = section_script
+        script += batch_script
+
+    # Process enhance chain in chunks
+    chunk_size = 3500
+    script_chunks = [script[i:i+chunk_size]
+                     for i in range(0, len(script), chunk_size)]
+    enhanced_script = ""
+    for chunk in script_chunks:
+        enhanced_chunk = chains["enhance_chain"].invoke(
+            {"draft_script": chunk})
+        enhanced_script += enhanced_chunk
+
     end_time = datetime.now()
     print(f"Time taken: {end_time - start_time}")
     print("final script generated")

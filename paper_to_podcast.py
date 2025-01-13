@@ -12,14 +12,15 @@ from utils.audio_gen import generate_podcast
 load_dotenv()
 
 # Initialize the Bedrock client
-bedrock_client = boto3.client(service_name='bedrock-runtime')
+bedrock_client = boto3.client(
+    service_name='bedrock-runtime', region_name=os.getenv("AWS_REGION"))
 
 # Initialize the Bedrock model
 llm = ChatBedrock(
     model_id=os.getenv("MODEL_ID"),
     client=bedrock_client,
     model_kwargs={
-        "max_tokens": 2048,
+        "max_tokens": 4096,
         "temperature": 0.7,
     }
 )
@@ -33,13 +34,28 @@ chains = {
 
 
 def main(pdf_path):
-    # Step 1: Generate the podcast script from the PDF
-    print("Generating podcast script...")
-    script = generate_script(pdf_path, chains, llm)
-    print("Podcast script generation complete!")
+    # If a script has already been generated, skip the generation process
+    if os.path.exists(f"./script_{os.path.basename(pdf_path).replace('.pdf', '.txt')}"):
+        print("Podcast script already exists. Skipping generation process...")
+        script_path = f"./script_{os.path.basename(
+            pdf_path).replace('.pdf', '.txt')}"
+        with open(script_path, "r", encoding="utf-8") as file:
+            script = file.read()
+    else:
+        # Step 1: Generate the podcast script from the PDF
+        print("Generating podcast script...")
+        script = generate_script(pdf_path, chains, llm)
+        print("Podcast script generation complete!")
+
+        # write the script to a file
+        script_path = f"./script_{os.path.basename(
+            pdf_path).replace('.pdf', '.txt')}"
+        with open(script_path, "w", encoding="utf-8") as file:
+            file.write(script)
 
     print("Generating podcast audio files...")
-    polly_client = boto3.client(service_name='polly')
+    polly_client = boto3.client(
+        service_name='polly', region_name=os.getenv("AWS_REGION"))
     generate_podcast(script, polly_client)
     print("Podcast generation complete!")
 
